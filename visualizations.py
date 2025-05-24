@@ -78,7 +78,7 @@ def agg_plot(
     overlay_var=None,
     central_tendency='mean',
     error_type='sem',
-    datapoint_var='Mouse',
+    datapoint_var='Subject',
     plot_mode='bar',
     plot_agg=True,
     bar_mode='group',
@@ -141,7 +141,7 @@ def agg_plot(
     error_type : str
         which measure of error to use when aggregating data. Default is 'sem'.
     datapoint_var : str
-        name of the column in data representing each individual subject name. Default is 'Mouse'.
+        name of the column in data representing each individual subject name. Default is 'Subject'.
     plot_mode : str
         one of 'bar', 'line', or 'point' for which type of plot is desired. Default is 'bar'.
     plot_agg : bool
