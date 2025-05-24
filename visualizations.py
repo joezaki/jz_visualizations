@@ -216,6 +216,11 @@ def agg_plot(
             data[var_key] = ''
             data[var_key] = pd.Categorical(data[var_key])
             vars_dict[var_key] = var_key
+        else:
+            # cast any non-categorical var to categorical
+            if data[var].dtype is not pd.Categorical:
+                data[var] = pd.Categorical(data[var])
+
 
     # make sure all relevant variables are of type categorical
     assert np.all([data[col].dtype.name == 'category' if col is not None else True for col in vars_dict.values()]), \
