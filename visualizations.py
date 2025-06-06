@@ -470,13 +470,14 @@ def correlation_plot(
     """
 
     # prepare data
-    groups = np.array(groups) if groups is not None else np.repeat('', len(data_x))
+    groups = np.array(groups) if groups is not None else np.repeat(' ', len(data_x))
 
+    # if no color is set, use a color palette to color each group
     if colors is None:
-        len(np.unique(groups))
         colors = np.repeat("x", len(data_x)).astype(object)
         for i, group in enumerate(np.unique(groups)):
             colors[groups == group] = color_palette[i]
+    colors = np.array(colors) if type(colors) is list else colors
 
     # compute correlation
     corr_data = pd.DataFrame(
@@ -495,25 +496,29 @@ def correlation_plot(
     fig = go.Figure()
 
     if plot_points:
-        if textinfo is None:
-            textinfo = np.repeat("", corr_data.shape[0])
-        fig.add_trace(
-            go.Scattergl(
-                x=corr_data.X,
-                y=corr_data.Y,
-                mode="markers",
-                marker_size=marker_size,
-                marker=dict(
-                    line=dict(color="black", width=outline_width), color=colors, opacity=opacity
-                ),
-                text=[
-                    text + ", (" + str(np.round(x, 4)) + ", " + str(np.round(y, 4)) + ")"
-                    for text, (x, y) in zip(textinfo, zip(corr_data.X, corr_data.Y))
-                ],
-                hoverinfo="text",
-                showlegend=False,
+        for group in np.unique(groups):
+            sub_data = corr_data[groups == group]
+            sub_colors = colors[groups == group] if type(colors) == np.ndarray else colors
+            textinfo = np.repeat("", sub_data.shape[0]) if textinfo is None else textinfo
+            fig.add_trace(
+                go.Scattergl(
+                    x=sub_data.X,
+                    y=sub_data.Y,
+                    mode="markers",
+                    marker_size=marker_size,
+                    marker=dict(
+                        line=dict(color="black", width=outline_width), color=sub_colors, opacity=opacity
+                    ),
+                    text=[
+                        text + ", (" + str(np.round(x, 4)) + ", " + str(np.round(y, 4)) + ")"
+                        for text, (x, y) in zip(textinfo, zip(sub_data.X, sub_data.Y))
+                    ],
+                    hoverinfo="text",
+                    showlegend=False,
+                    name=group,
+                    legendgroup=group
+                )
             )
-        )
 
     # plot lines of best fit
     if plot_fits:
@@ -532,7 +537,8 @@ def correlation_plot(
                     y=model_pred['mean'],
                     mode='lines',
                     line=dict(color=color, width=line_width),
-                    name=group
+                    name=group,
+                    legendgroup=group
                 )
             )
             
