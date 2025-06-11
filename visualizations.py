@@ -115,8 +115,8 @@ def agg_plot(
     across up to three variables. Returns an interactive plotly graph, and optionally saves the graph in static
     or interactive format.
 
-    Ensure that group_var, sep_var, and overlay_var are of dtype pd.Categorical, or None. At least one of
-    these variables must not be None.
+    If group_var, sep_var, and overlay_var are not of dtype None or pd.Categorical, they will be coerced to dtype
+    pd.Categorical. At least one of these variables must not be None.
 
     For coloring, color_var must be one of sep_var, group_var, or overlay_var, or None. If one of those variables,
     colors must be a dict with a key-value pair for each unique entry and an associated color, or a string to uniformly
@@ -220,13 +220,6 @@ def agg_plot(
             # cast any non-categorical var to categorical
             if data[var].dtype is not pd.Categorical:
                 data[var] = pd.Categorical(data[var])
-
-
-    # make sure all relevant variables are of type categorical
-    assert np.all([data[col].dtype.name == 'category' if col is not None else True for col in vars_dict.values()]), \
-        '{s}, {g}, and {o} must be of type pd.Categorical'.format(s=vars_dict['sep_var'],
-                                                                g=vars_dict['group_var'],
-                                                                o=vars_dict['overlay_var'])
 
     # initialize plot
     subplot_titles = data[vars_dict['sep_var']].unique().sort_values()
