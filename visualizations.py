@@ -158,9 +158,10 @@ def agg_plot(
         width of the line of the aggregate line. Only used if plot_mode=='line'. Default is 3.
     error_width : int or float
         width or error bars. Default is 3.
-    colors : dict or str
-        dictionary where each key is each unique color_var type and each value is its corresponding color, or a string representing
-        one color for all datapoints. If color_var is None, must be a string. Default is 'slategrey'.
+    colors : dict, list/array, or str
+        dictionary where each key is each unique color_var type and each value is its corresponding color, or a list
+        where each entry represents a color for each unique color_var type (which will be inferred automatically), or a
+        string representing one color for all datapoints. If color_var is None, must be a string. Default is 'slategrey'.
     color_datapoints : bool
         whether or not to individually color individual subjects' datapoints. Otherwise, all individual datapoints are
         black. Only used if plot_datapoints or plot_datalines==True. Default is False.
@@ -201,14 +202,6 @@ def agg_plot(
         'group_var'  : group_var,
         'overlay_var': overlay_var
         }
-    
-    # configure colors
-    if not (color_var in [sep_var, group_var, overlay_var]) | (color_var is None):
-        raise Exception("Invalid color_var, must be equal to sep_var, group_var, overlay_var, or None.")
-    if (type(colors) == str) & (color_var is not None):
-        colors = {unique_val:colors for unique_val in data[color_var].unique()}     # set uniform color if color is a string
-    if (type(colors) != str) & (color_var is None):
-        raise Exception("If color_var is None, colors must be a string.")
 
     # add placeholder for columns that are not specified
     for var_key, var in vars_dict.items():
@@ -220,6 +213,16 @@ def agg_plot(
             # cast any non-categorical var to categorical
             if data[var].dtype is not pd.Categorical:
                 data[var] = pd.Categorical(data[var])
+
+    # configure colors
+    if not (color_var in [sep_var, group_var, overlay_var]) | (color_var is None):
+        raise Exception("Invalid color_var, must be equal to sep_var, group_var, overlay_var, or None.")
+    if (color_var is None) & (type(colors) != str):
+        raise Exception("If color_var is None, colors must be a string.")
+    if (color_var is not None) & (type(colors) == str):
+        colors = {unique_val:colors for unique_val in data[color_var].unique()}     # set uniform color if color is a string
+    if (color_var is not None) & ((type(colors) == list) | (type(colors) == np.array)):
+        colors = {unique_val:color for color, unique_val in zip(colors, data[color_var].unique().sort_values())} # infer colors dict by their order if colors is list-like
 
     # initialize plot
     subplot_titles = data[vars_dict['sep_var']].unique().sort_values()
