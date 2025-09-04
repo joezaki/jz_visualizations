@@ -350,7 +350,7 @@ def agg_plot(
     if save_path is not None:
         save_dirname = os.path.dirname(save_path)
         if not os.path.exists(save_dirname):
-            os.mkdir(save_dirname)
+            os.makedirs(save_dirname)
         if save_path.split('.')[-1] == 'html':
             fig.write_html(save_path)
         else:
@@ -605,7 +605,7 @@ def correlation_plot(
     # save plot
     if save_path is not None:
         if not os.path.exists(os.path.dirname(save_path)):
-            os.mkdir(os.path.dirname(save_path))
+            os.makedirs(os.path.dirname(save_path))
         if save_path.split('.')[-1] == 'html':
             fig.write_html(save_path)
         else:
@@ -701,7 +701,7 @@ def plotRasterAndTimeHistogram(
     fig.update_annotations(font=dict(size=text_size+3))
     if save_path is not None:
         if not os.path.exists(os.path.dirname(save_path)):
-            os.mkdir(os.path.dirname(save_path))
+            os.makedirs(os.path.dirname(save_path))
         if save_path.split('.')[-1] == 'html':
             fig.write_html(save_path)
         elif save_path.split('.')[-1] != 'eps':
