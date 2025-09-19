@@ -1,11 +1,13 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "jz_visualizations"
 version = "0.1.0"
 description = "Utility visualizations using Plotly and VisPy"
+readme = "README.md"
+requires-python = ">=3.10"
 authors = [
     { name="Joe Zaki", email="joezaki.95@gmail.com" }
 ]
@@ -19,6 +21,9 @@ dependencies = [
     "vispy=0.15.2",
     "pyqt=5.15.11"
 ]
+
+[tools.setuptools.packages.find]
+where = ["src"]
 
 [project.urls]
 "Homepage" = "https://github.com/joezaki/jz_visualizations"
