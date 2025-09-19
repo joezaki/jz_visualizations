@@ -46,9 +46,9 @@ class Vis:
 
     def __init__(
             self,
-            title='',
-            width=1000,
-            height=500,
+            title=None,
+            width=700,
+            height=700,
             bgcolor='white',
             grid_margin=0,
             grid_padding=20,
@@ -117,6 +117,11 @@ class Vis:
     def save(self, save_path):
         '''
         Save the current canvas as a static image.
+
+        Parameters
+        ==========
+        save_path : str
+            directory with filename and extension, to which to save the image
         '''
         io.imsave(save_path, self.canvas.render())
     
@@ -196,6 +201,47 @@ class Vis:
 
         return view
 
+
+    def on_key_press(
+            self,
+            event
+            ):
+        '''
+        If canvas has a slider, allow slider to be controlled by left and right arrow keys.
+
+        Parameters
+        ==========
+        event : event object
+            which keyboard event just occurred. Only ones of consequence are "Left" and "Right".
+        '''
+        cur_slider_val = self.slider.value()
+        if event.key == 'Left':
+            self.slider.setValue(max(self.slider_range[0], cur_slider_val - 1))
+        if event.key == 'Right':
+            self.slider.setValue(min(cur_slider_val + 1, self.slider_range[1]))
+        else:
+            pass
+    
+
+    def add_slider(
+            self,
+            slider_size
+    ):
+        '''
+        Add a slider widget to the Vis object.
+
+        Parameters
+        ==========
+        slider_size : int
+            number of slider positions to create in the slider
+        '''
+        self.slider = QSlider(Qt.Horizontal)
+        self.slider_range = (0, slider_size-1)
+        self.slider.setRange(self.slider_range[0],self.slider_range[1])
+        self.slider.setValue(0)
+        self.layout.addWidget(self.slider)
+
+
     def draw_colorbar(
             self,
             name,
@@ -230,6 +276,17 @@ class Vis:
         '''
         If a matrix is larger than the GL_MAX_TEXTURE_SIZE limit, use this
         to plot the same image as multiple smaller images tiled together.
+
+        Parameters
+        ==========
+        data : 2d array or list of 2d arrays
+            if 2d array, image will be plotted. If a list of 2d arrays, a slider will
+            be created and each 2d array in the list will be plotted along the slider.
+        view : VisPy view object
+            a view associated with a nested grid, into which this visualization will
+            be placed.
+        cmap : str
+            which colormap to use to color the image.
         '''
 
         x_len = data.shape[1]
@@ -254,36 +311,6 @@ class Vis:
                     )
                 image.transform = STTransform(translate=(x_tile[0],y_tile[0]))
                 image_ls.append(image)
-
-
-    def on_key_press(
-            self,
-            event
-            ):
-        '''
-        If canvas has a slider, allow slider to be controlled by left and right arrow keys.
-        '''
-        cur_slider_val = self.slider.value()
-        if event.key == 'Left':
-            self.slider.setValue(max(self.slider_range[0], cur_slider_val - 1))
-        if event.key == 'Right':
-            self.slider.setValue(min(cur_slider_val + 1, self.slider_range[1]))
-        else:
-            pass
-    
-
-    def add_slider(
-            self,
-            slider_size
-    ):
-        '''
-        Add a slider widget to the Vis object.
-        '''
-        self.slider = QSlider(Qt.Horizontal)
-        self.slider_range = (0, slider_size-1)
-        self.slider.setRange(self.slider_range[0],self.slider_range[1])
-        self.slider.setValue(0)
-        self.layout.addWidget(self.slider)
 
     
     def draw_image(
