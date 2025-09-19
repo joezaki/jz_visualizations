@@ -18,8 +18,8 @@ dependencies = [
     "scipy>=1.15.2",
     "statsmodels>=0.14.4",
     "matplotlib>=3.10.1",
-    "vispy=0.15.2",
-    "pyqt=5.15.11"
+    "vispy==0.15.2",
+    "pyqt5==5.15.11"
 ]
 
 [tools.setuptools.packages.find]
