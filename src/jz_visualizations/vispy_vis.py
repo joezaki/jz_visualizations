@@ -349,7 +349,9 @@ class Vis:
         if len(self.view_coords) == 0:
             self.view_coords[name] = (0, 0)
 
-        view = self.add_axes_view(name=name, **kwargs)
+        if name not in self.view_dict.keys():
+            view = self.add_axes_view(name=name, **kwargs)
+            self.view_dict[name] = view
 
         # set current data
         if type(data) is not list:
@@ -360,9 +362,9 @@ class Vis:
         # plot image
         if cur_data.size > self.max_gl_size:
             print('data size > max_gl_size; plotting multiscale')
-            self.draw_multiscale_image(data=cur_data, view=view, cmap=cmap)
+            self.draw_multiscale_image(data=cur_data, view=self.view_dict[name], cmap=cmap)
         else:
-            image = scene.Image(data=cur_data, parent=view.scene, cmap=cmap)
+            image = scene.Image(data=cur_data, parent=self.view_dict[name].scene, cmap=cmap)
 
         # if data is a list, create a slider to pan through it
         if type(data) is list:
@@ -373,10 +375,10 @@ class Vis:
             def update_plot(index):
                 cur_data = data[index].astype(np.float32)
                 if cur_data.size > self.max_gl_size:
-                    for visual in list(view.scene.children):
+                    for visual in list(self.view_dict[name].scene.children):
                         if type(visual) is scene.Image:
                             visual.parent = None
-                    self.draw_multiscale_image(data=cur_data, view=view, cmap=cmap)
+                    self.draw_multiscale_image(data=cur_data, view=self.view_dict[name], cmap=cmap)
                 else:
                     image.set_data(cur_data)
                 self.win.setWindowTitle(title_ls[index])
@@ -386,15 +388,13 @@ class Vis:
         
         # reset view on double click
         def on_mouse_double_click(event):
-            view.camera.rect = (0, 0, cur_data.shape[1], cur_data.shape[0])
+            self.view_dict[name].camera.rect = (0, 0, cur_data.shape[1], cur_data.shape[0])
         self.canvas.events.mouse_double_click.connect(on_mouse_double_click)
         on_mouse_double_click(0)
 
         if not scale_image:
-            view.camera.aspect=1
+            self.view_dict[name].camera.aspect=1
 
-        self.view_dict[name] = view
-    
 
     def draw_line(
             self,
@@ -437,7 +437,9 @@ class Vis:
         if len(self.view_coords) == 0:
             self.view_coords[name] = (0, 0)
 
-        view = self.add_axes_view(name=name, **kwargs)
+        if name not in self.view_dict.keys():
+            view = self.add_axes_view(name=name, **kwargs)
+            self.view_dict[name] = view
         
         # if x is not provided, create x as a range from 0 to N for each y
         if x is None:
@@ -462,7 +464,7 @@ class Vis:
 
         # plot line
         line = scene.Line(pos=np.column_stack((cur_x, cur_y)),
-                            color=cur_line_color, width=1, parent=view.scene)
+                            color=cur_line_color, width=1, parent=self.view_dict[name].scene)
         
         # if data is a list, create a slider to pan through it
         if type(y) is list:
@@ -492,7 +494,7 @@ class Vis:
                 self.canvas.update()
 
                 if same_scale:
-                    view.camera.set_range(x=(x_min,x_max),
+                    self.view_dict[name].camera.set_range(x=(x_min,x_max),
                                           y=(y_min,y_max))
                 else:
                     on_mouse_double_click(0)
@@ -501,18 +503,16 @@ class Vis:
 
         # configure view and add double click reset
         def on_mouse_double_click(event):
-            view.camera.set_range(x=(cur_x.min(),cur_x.max()),
+            self.view_dict[name].camera.set_range(x=(cur_x.min(),cur_x.max()),
                                   y=(cur_y.min(),cur_y.max()))
         self.canvas.events.mouse_double_click.connect(on_mouse_double_click)
 
         # initialize scaling
         if same_scale:
-            view.camera.set_range(x=(x_min,x_max),
+            self.view_dict[name].camera.set_range(x=(x_min,x_max),
                                   y=(y_min,y_max))
         else:
             on_mouse_double_click(0)
-
-        self.view_dict[name] = view
 
 
     def draw_scatter(
@@ -569,7 +569,9 @@ class Vis:
         if len(self.view_coords) == 0:
             self.view_coords[name] = (0, 0)
 
-        view = self.add_axes_view(name=name, **kwargs)
+        if name not in self.view_dict.keys():
+            view = self.add_axes_view(name=name, **kwargs)
+            self.view_dict[name] = view
 
         # set current data
         if type(y) is not list:
@@ -588,7 +590,7 @@ class Vis:
             marker_color = Color(marker_color, alpha=opacity)
 
         # plot scatter
-        scatter = visuals.Markers(parent=view.scene)
+        scatter = visuals.Markers(parent=self.view_dict[name].scene)
         scatter.set_data(
             pos=np.array([cur_x,cur_y]).T,
             edge_width=outline_width,
@@ -639,15 +641,13 @@ class Vis:
 
         # configure view and add double click reset
         def on_mouse_double_click(event):
-            view.camera.set_range(x=(cur_x.min(),cur_x.max()),
+            self.view_dict[name].camera.set_range(x=(cur_x.min(),cur_x.max()),
                                   y=(cur_y.min(),cur_y.max()))
         self.canvas.events.mouse_double_click.connect(on_mouse_double_click)
 
         # initialize scaling
         if same_scale:
-            view.camera.set_range(x=(x_min,x_max),
+            self.view_dict[name].camera.set_range(x=(x_min,x_max),
                                   y=(y_min,y_max))
         else:
             on_mouse_double_click(0)
-
-        self.view_dict[name] = view
