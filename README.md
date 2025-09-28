@@ -25,11 +25,11 @@
 
 ### Directly from GitHub (*non-editable version*)
 ***
-1. Open terminal and either activate an existing environment (`source activate myenv`) or create a new one (`conda create -n jzvis python=3.12`) and then activate it.
-- Optional: If creating a new env, install all binary packages using conda _before pip installing the package_. If the dependencies that this relies on are not present, they will automatically be downloaded with pip.
+1. Open terminal and either activate an existing environment (`source activate myenv`) or<br>create a new one (`conda create -n jzvis python=3.12`) and then activate it.
+- Optional: If creating a new env, install all binary packages using conda _before pip installing the package_.<br>If the dependencies that this relies on are not present, they will automatically be downloaded with pip.
 - Optional 2b: If you are planning to use jupyter notebooks, make sure to install that now too with `conda install -c conda-forge jupyter`.
 2. Install package to env with `pip install git+https://github.com/joezaki/jz_visualizations.git`.
-3. Verify installation with `python -c "from jz_visualizations.vispy_vis import Vis; print('Vis imported successfully.')"`.
+3. Verify installation with `python -c "from jz_vis.vispy_vis import Vis; print('Vis imported successfully.')"`.<br>If the package imported successfully, the print statement will be printed.
 
 ### From local cloned copy (*editable version*)
 ***
@@ -41,4 +41,4 @@
 - Optional 2a: If creating a new env, you can use the provided `environment.yaml` file here, with `conda env create -f environment.yaml -n jzvis`.
 - Optional 2b: If you are planning to use jupyter notebooks, make sure to install that now too with `conda install -c conda-forge jupyter`.
 5. Install package to env with `pip install -e .`. This ensures that any changes that are made to the repo will become immediately available.
-6. Verify installation with: `python - <<'PY'`, then next line `import jz_visualizations`, then `print("package imported successfully")`, then `PY`.<br>If the package imported successfully, the print statement will be printed.
+6. Verify installation with `python -c "from jz_vis.vispy_vis import Vis; print('Vis imported successfully.')"`.<br>If the package imported successfully, the print statement will be printed.
