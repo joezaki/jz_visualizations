@@ -107,6 +107,8 @@ def agg_plot(
     tick_angle=45,
     h_spacing=0.1,
     shapes_to_add=None,
+    show_fig=True,
+    return_fig=False,
     save_path=None,
     plot_scale=5
     ):
@@ -191,6 +193,10 @@ def agg_plot(
         spacing between subplots. Only used if sep_var is not None. Default is 0.1.
     shapes_to_add : dict or list of dicts
         shape to be added to plot. Must be either a dict or a list of dicts of plotly shapes to be added. Default is None.
+    show_fig : bool
+        whether or not to display the figure. Default is True.
+    return_fig : bool
+        whether or not to return the fig object. Default is False.
     save_path : str
         file path location including filename where plot should be saved. If None, plot will not be saved. Default is None.
     plot_scale : int
@@ -365,7 +371,10 @@ def agg_plot(
             'scale':plot_scale
             }
             }
-    fig.show(config=config)
+    if show_fig:
+        fig.show(config=config)
+    if return_fig:
+        return fig
 
 
 # -----------------------------------------
@@ -398,6 +407,8 @@ def correlation_plot(
     opacity=0.8,
     plot_height=600,
     plot_width=600,
+    show_fig=True,
+    return_fig=False,
     save_path=None,
     plot_scale=5
     ):
@@ -459,6 +470,10 @@ def correlation_plot(
         how opaque each datapoint should be, from [0,1]. Default is 0.8.
     plot_height, plot_width : int
         the height and width, respectively, of the entier plot. Defaults are 600 and 600, respectively.
+    show_fig : bool
+        whether or not to display the figure. Default is True.
+    return_fig : bool
+        whether or not to return the fig object. Default is False.
     save_path : str
         file path location including filename where plot should be saved. If None, plot will not be saved. Default is None.
     plot_scale : int
@@ -620,7 +635,10 @@ def correlation_plot(
             'scale':plot_scale
             }
             }
-    fig.show(config=config)
+    if show_fig:
+        fig.show(config=config)
+    if return_fig:
+        return fig
 
 # -----------------------------------------
 
@@ -638,6 +656,8 @@ def plotRasterAndTimeHistogram(
         text_size=18,
         font_family='Arial',
         dtick=None,
+        show_fig=True,
+        return_fig=False,
         save_path=None,
         plot_scale=5,
         renderer='notebook'
@@ -672,6 +692,10 @@ def plotRasterAndTimeHistogram(
         font family used in the plot. Default is 'Arial'.
     dtick : int or float
         delta between each tick label on the x-axis. Default is None.
+    show_fig : bool
+        whether or not to display the figure. Default is True.
+    return_fig : bool
+        whether or not to return the fig object. Default is False.
     save_path : str
         file path location including filename where plot should be saved. If None, plot will not be saved. Default is None.
     plot_scale : int
@@ -718,4 +742,7 @@ def plotRasterAndTimeHistogram(
             'scale':plot_scale
             }
             }
-    fig.show(renderer=renderer, config=config)
+    if show_fig:
+        fig.show(renderer=renderer, config=config)
+    if return_fig:
+        return fig
