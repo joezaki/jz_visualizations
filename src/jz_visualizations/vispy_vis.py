@@ -39,6 +39,15 @@ class Vis:
     view_dict : dict
         dictionary where each key is the name of the given subplot (to match keys in view_coords) and
         the value is the associated Vispy view object of that subplot.
+    grid_dict : dict
+        dictionary where each key is the name of a given subplot (to match keys in view_coords) and
+        the value is the associated VisPy nested grid that comprises that subplot.
+    draw_ranges : dict
+        dictionary where each key is the name of a given subplot (to match keys in view_coords) and
+        the value is a nested dictionary of the view x/y ranges of all draw calls in that view.
+    view_ranges : dict
+        dictionary where each key is the name of a given subplot (to match keys in view_coords) and
+        the value is a dictionary of the final x/y range to be used for that view.
     max_gl_size : int
         max texture size that your GPU supports, used to ensure all data are properly rendered.
     '''
@@ -141,7 +150,7 @@ class Vis:
             add_yaxis=True,
             magnify=False,
             mag_size_factor=10,
-            mag_radius_ratio=1
+            mag_radius_ratio=1,
             ):
         '''
         Add x- and y-axes to a given subplot, given the view
@@ -162,6 +171,7 @@ class Vis:
         mag_size_factor : int
             by what factor to magnify. Only used if magnify=True. Default is 10.
         mag_radius_ratio : int
+            radius of the magnification. Only used if magnify=True. Default is 1.
         '''
 
         row, col = self.view_coords[name]
