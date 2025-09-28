@@ -15,6 +15,8 @@
 - `matplotlib = 3.10.1`
 
 #### The VisPy code relies on and was developed using:
+- `python = 3.12`
+- `numpy = 2.2.4`
 - `vispy = 0.15.2`
 - `pyqt = 5.15.11`
 
