@@ -416,7 +416,7 @@ class Vis:
             self.view_dict[name] = view
             self.draw_ranges[name] = {}
         
-        draw_num = len(self.view_dict[name].children) - 1
+        draw_num = len(self.view_dict[name].scene.children) - 1
 
         # set current data
         if type(data) is not list:
@@ -516,7 +516,7 @@ class Vis:
             self.view_dict[name] = view
             self.draw_ranges[name] = {}
         
-        draw_num = len(self.view_dict[name].children) - 1
+        draw_num = len(self.view_dict[name].scene.children) - 1
         
         # if x is not provided, create x as a range from 0 to N for each y
         if x is None:
@@ -648,7 +648,7 @@ class Vis:
             self.view_dict[name] = view
             self.draw_ranges[name] = {}
         
-        draw_num = len(self.view_dict[name].children) - 1
+        draw_num = len(self.view_dict[name].scene.children) - 1
 
         # set current data
         if type(y) is not list:
@@ -714,7 +714,7 @@ class Vis:
                 if not global_scaling:
                     self.draw_ranges[name][draw_num] = dict(x=(cur_x.min(), cur_x.max()),
                                                             y=(cur_y.min(), cur_y.max()))
-
+                self.scale_view(name=name)
             self.slider.valueChanged.connect(update_plot)
             self.canvas.events.key_press.connect(self.on_key_press)
             update_plot(0)
