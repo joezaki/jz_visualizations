@@ -34,7 +34,7 @@
 ### From local cloned copy (*editable version*)
 ***
 1. Open terminal and navigate to the folder where you would like jz_visualizations to live (`cd /path/to/folder`).
-2. Clone the repository into this folder with `git clone https://https://github.com/joezaki/jz_visualizations.git`.
+2. Clone the repository into this folder with `git clone https://github.com/joezaki/jz_visualizations.git`.
 3. Navigate into `jz_visualizations` with `cd jz_visualizations`.
 4. Activate an existing environment (`source activate myenv`) or create a new one (`conda create -n jzvis`) and then activate it.
 - Optional: If creating a new env, install all binary packages using conda _before pip installing the package_.
