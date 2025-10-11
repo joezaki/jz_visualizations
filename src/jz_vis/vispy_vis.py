@@ -365,7 +365,7 @@ class Vis:
         for x_tile in x_indices:
             for y_tile in y_indices:
                 image = scene.Image(
-                    data[np.ix_(x_tile,y_tile)].astype(np.float32),
+                    data[np.ix_(y_tile,x_tile)].astype(np.float32),
                     clim=clim,
                     cmap=cmap,
                     parent=view.scene
