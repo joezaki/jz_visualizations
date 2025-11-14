@@ -293,6 +293,44 @@ def agg_plot(
                         row=1,
                         col=i+1
                     )
+                elif plot_mode.lower() == 'ribbon':
+                    fig.add_trace(
+                        go.Scattergl(
+                            x=xlabels,
+                            y=agg_data[plot_var][xlabels].values,
+                            name=overlay,
+                            mode='lines',
+                            line=dict(color=agg_colors[0], width=agg_line_width),
+                            legendgroup=overlay,
+                        ),
+                        row=1,
+                        col=i+1
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            x=xlabels,
+                            y=agg_data[plot_var][xlabels].values + error_data[plot_var][xlabels].values,
+                            name=overlay,
+                            mode='lines',
+                            line=dict(color=agg_colors[0], width=0),
+                            legendgroup=overlay
+                        ),
+                        row=1,
+                        col=i+1
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            x=xlabels,
+                            y=agg_data[plot_var][xlabels].values - error_data[plot_var][xlabels].values,
+                            name=overlay,
+                            mode='lines',
+                            fill='tonexty',
+                            line=dict(color=agg_colors[0], width=0),
+                            legendgroup=overlay
+                        ),
+                        row=1,
+                        col=i+1
+                    )
                 else:
                     raise Exception("Invalid plot_mode. Must be one of 'bar', 'point', or 'line'.")
         
