@@ -784,10 +784,38 @@ def raster_histogram_plot(
     fig.add_trace(go.Heatmap(x=time, z=raster, colorscale=colorscale, showscale=False, showlegend=False), row=1, col=1)
 
     # plot mean with sem
-    fig.add_trace(go.Scatter(x=time, y=(mean + sem),
-                             mode='lines', fill=None, line_color=line_color, hoverinfo='skip', showlegend=False, name=line_y_title, legendgroup='mean'), row=2, col=1)
-    fig.add_trace(go.Scatter(x=time, y=(mean - sem),
-                             mode='lines', fill='tonexty', line=dict(color=line_color), hoverinfo='skip', showlegend=False, legendgroup='mean'), row=2, col=1)
+    fig.add_trace(
+        go.Scatter(
+            x=time,
+            y=mean,
+            mode='lines',
+            line=dict(color=line_color, width=line_width),
+        ),
+        row=2,
+        col=1
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=time,
+            y=(mean + sem),
+            mode='lines',
+            line=dict(color=line_color, width=0),
+        ),
+        row=2,
+        col=1
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=time,
+            y=(mean - sem),
+            mode='lines',
+            fill='tonexty',
+            line=dict(color=line_color, width=0),
+        ),
+        row=2,
+        col=1
+    )
+
 
     # configure plot
     fig.update_yaxes(title_text=raster_y_title, row=1, col=1)
