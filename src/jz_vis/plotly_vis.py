@@ -725,16 +725,16 @@ def raster_histogram_plot(
         x_title='Time (sec)',
         raster_y_title=None,
         line_y_title=None,
-        plot_height=600,
+        plot_height=700,
         plot_width=500,
         text_size=18,
         font_family='Arial',
         dtick=None,
+        tick_angle=0,
         show_fig=True,
         return_fig=False,
         save_path=None,
         plot_scale=5,
-        renderer='notebook'
         ):
     '''
     Assumes an input matrix (raster) where each row is a trial and each column is a timepoint, and a time vector. Plots a
@@ -775,6 +775,8 @@ def raster_histogram_plot(
         font family used in the plot. Default is 'Arial'.
     dtick : int or float
         delta between each tick label on the x-axis. Default is None.
+    tick_angle : int
+        angle at which x-axis label text is displayed. Default is 0.
     show_fig : bool
         whether or not to display the figure. Default is True.
     return_fig : bool
@@ -783,8 +785,6 @@ def raster_histogram_plot(
         file path location including filename where plot should be saved. If None, plot will not be saved. Default is None.
     plot_scale : int
         size scaling of the plot. Only used if save_path is not None and if save_path extension is of a static type. Default is 5.
-    renderer : str
-        plotly renderer to use for plotting. Default is 'notebook'.
     '''
 
     # compute mean and sem of raster
@@ -794,7 +794,18 @@ def raster_histogram_plot(
     fig = make_subplots(rows=2, shared_xaxes=True, x_title=x_title, vertical_spacing=0.05)
 
     # plot raster
-    fig.add_trace(go.Heatmap(x=time, z=raster, colorscale=colorscale, showscale=False, showlegend=False), row=1, col=1)
+    fig.add_trace(
+        go.Heatmap(
+            x=time,
+            y=trials if trials is not None else np.arange(raster.shape[0]),
+            z=raster,
+            colorscale=colorscale,
+            showscale=False,
+            showlegend=False
+        ),
+        row=1,
+        col=1
+    )
 
     # plot mean with sem
     fig.add_trace(
@@ -844,10 +855,16 @@ def raster_histogram_plot(
     fig.update_yaxes(title_text=raster_y_title, row=1, col=1)
     fig.update_yaxes(title_text=line_y_title, row=2, col=1)
     if dtick is not None:
-        fig.update_xaxes(dtick=dtick)
+        fig.update_xaxes(tickangle=tick_angle, dtick=dtick)
 
-    fig.update_layout(template='simple_white', height=plot_height, width=plot_width, title_text=title,
-                      font=dict(size=text_size, family=font_family))
+    fig.update_layout(
+        template='simple_white',
+        height=plot_height,
+        width=plot_width,
+        title_text=title,
+        font=dict(size=text_size, family=font_family),
+        showlegend=False,
+        )
     fig.update_annotations(font=dict(size=text_size+3))
 
     # save plot
@@ -871,6 +888,6 @@ def raster_histogram_plot(
             }
             }
     if show_fig:
-        fig.show(renderer=renderer, config=config)
+        fig.show(config=config)
     if return_fig:
         return fig
