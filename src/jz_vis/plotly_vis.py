@@ -680,7 +680,7 @@ def correlation_plot(
 
 # -----------------------------------------
 
-def plotRasterAndTimeHistogram(
+def raster_histogram_plot(
         raster,
         time,
         title=None,
@@ -742,25 +742,32 @@ def plotRasterAndTimeHistogram(
         plotly renderer to use for plotting. Default is 'notebook'.
     '''
 
+    # compute mean and sem of raster
     mean = raster.mean(axis=0)
     sem  = raster.std(axis=0) / np.sqrt(raster.shape[0])
 
     fig = make_subplots(rows=2, shared_xaxes=True, x_title=x_title, vertical_spacing=0.05)
+
+    # plot raster
     fig.add_trace(go.Heatmap(x=time, z=raster, colorscale=colorscale, showscale=False, showlegend=False), row=1, col=1)
 
+    # plot mean with sem
     fig.add_trace(go.Scatter(x=time, y=(mean + sem),
                              mode='lines', fill=None, line_color=line_color, hoverinfo='skip', showlegend=False, name=line_y_title, legendgroup='mean'), row=2, col=1)
     fig.add_trace(go.Scatter(x=time, y=(mean - sem),
                              mode='lines', fill='tonexty', line=dict(color=line_color), hoverinfo='skip', showlegend=False, legendgroup='mean'), row=2, col=1)
 
+    # configure plot
     fig.update_yaxes(title_text=raster_y_title, row=1, col=1)
     fig.update_yaxes(title_text=line_y_title, row=2, col=1)
     if dtick is not None:
         fig.update_xaxes(dtick=dtick)
-    # fig.update_yaxes(range=(0,np.ceil(mean)), row=2, col=1)
+
     fig.update_layout(template='simple_white', height=plot_height, width=plot_width, title_text=title,
                       font=dict(size=text_size, family=font_family))
     fig.update_annotations(font=dict(size=text_size+3))
+
+    # save plot
     if save_path is not None:
         if not os.path.exists(os.path.dirname(save_path)):
             os.makedirs(os.path.dirname(save_path))
