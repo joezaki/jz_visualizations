@@ -715,9 +715,13 @@ def correlation_plot(
 def raster_histogram_plot(
         raster,
         time,
+        trials=None,
         title=None,
         colorscale='gray_r',
         line_color='slategrey',
+        line_width=2,
+        add_vline=False,
+        vline_loc=0,
         x_title='Time (sec)',
         raster_y_title=None,
         line_y_title=None,
@@ -742,12 +746,21 @@ def raster_histogram_plot(
         numpy array representing trials in rows and time across columns, centered around 0.
     time : 1d numpy array or list
         time vector with the same length as the number of columns in raster.
+    trials : 1d numpy array or list
+        vector with the same length as the number of rows in raster. If not provided, will be set to
+        np.arange(raster.shape[0]). Default is None.
     title : str
         yitle of the plot. Default is None.
     colorscale : str
         colorscale to plot the heatmap. Default is 'gray_r'.
     line_color : str
         color to plot the line. Default is 'slategrey'.
+    line_width : int or float
+        width of the mean line. Default is 2.
+    add_vline : bool
+        whether or not to add a vertical demarcating line to the lower mean plot. Default is False.
+    vline_loc : int or float
+        x-location for where the vertical demarcating line is to be placed. Only used if add_vline is True. Default is 0.
     x_title : str
         label for the x-axis. Default is 'Time (sec)'.
     raster_y_title : str
@@ -816,6 +829,16 @@ def raster_histogram_plot(
         col=1
     )
 
+    if add_vline:
+        fig.add_vline(
+            x=vline_loc,
+            line_color='black',
+            line_width=2,
+            line_dash='dash',
+            opacity=1,
+            row=2,
+            col=1
+            )
 
     # configure plot
     fig.update_yaxes(title_text=raster_y_title, row=1, col=1)
