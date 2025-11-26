@@ -282,7 +282,7 @@ def agg_plot(
                     )
                 elif plot_mode.lower() == 'point':
                     fig.add_trace(
-                        go.Scattergl(
+                        go.Scatter(
                             x=xlabels,
                             y=agg_data[plot_var][xlabels].values,
                             error_y=dict(type='data', array=error_data[plot_var][xlabels].values, visible=True, width=error_width),
@@ -295,7 +295,7 @@ def agg_plot(
                     )
                 elif plot_mode.lower() == 'line':
                     fig.add_trace(
-                        go.Scattergl(
+                        go.Scatter(
                             x=xlabels,
                             y=agg_data[plot_var][xlabels].values,
                             error_y=dict(type='data', array=error_data[plot_var][xlabels].values, visible=True, width=error_width),
@@ -309,7 +309,7 @@ def agg_plot(
                     )
                 elif plot_mode.lower() == 'ribbon':
                     fig.add_trace(
-                        go.Scattergl(
+                        go.Scatter(
                             x=xlabels,
                             y=agg_data[plot_var][xlabels].values,
                             name=overlay,
@@ -362,7 +362,7 @@ def agg_plot(
                                    np.repeat('slategrey', point_data.shape[0])
                     line_color = point_color[0]
                     fig.add_trace(
-                        go.Scattergl(
+                        go.Scatter(
                             x=point_data[vars_dict['group_var']].values,
                             y=point_data[plot_var].values,
                             mode=datapoint_plot_mode,
@@ -627,7 +627,7 @@ def correlation_plot(
         min_val = min(corr_data.X.min(), corr_data.Y.min())
         max_val = max(corr_data.X.max(), corr_data.Y.max())
         fig.add_trace(
-            go.Scattergl(
+            go.Scatter(
                 x=np.linspace(min_val, max_val),
                 y=np.linspace(min_val, max_val),
                 mode="lines",
@@ -693,7 +693,9 @@ def correlation_plot(
     if return_fig:
         return fig
 
+
 # -----------------------------------------
+
 
 def raster_histogram_plot(
         raster,
