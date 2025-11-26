@@ -82,7 +82,7 @@ def agg_plot(
     datapoint_var='Subject',
     plot_mode='bar',
     plot_agg=True,
-    bar_mode='group',
+    align_mode='group',
     plot_datapoints=False,
     plot_datalines=False,
     agg_marker_size=15,
@@ -152,8 +152,8 @@ def agg_plot(
         one of 'bar', 'line', or 'point' for which type of plot is desired. Default is 'bar'.
     plot_agg : bool
         whether or not to plot the aggregate data. Default is True.
-    bar_mode : str
-        how to group bars along the overlay_var variable. One of 'group' or 'overlay'. Only used if plot_mode=='bar'. Default is 'group'.
+    align_mode : str
+        how to group aggregated data along the overlay_var variable. One of ['group', 'overlay', 'stack']. Default is 'group'.
     plot_datapoints, plot_datalines : bool
         whether or not to plot individual subject datapoints of datalines. Defaults are False.
     agg_marker_size : int or float
@@ -275,7 +275,9 @@ def agg_plot(
                             error_y=dict(type='data', array=error_data[plot_var][xlabels].values, visible=True, width=error_width),
                             name=overlay,
                             marker=dict(color=agg_colors, line=dict(width=1, color='black'), opacity=opacity),
-                            marker_pattern_shape=agg_marker_shape
+                            marker_pattern_shape=agg_marker_shape,
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
                         ),
                         row=row,
                         col=col
@@ -289,6 +291,8 @@ def agg_plot(
                             name=overlay,
                             mode='markers',
                             marker=dict(color=agg_colors, size=agg_marker_size, line=dict(width=1, color='black'), opacity=opacity),
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
                         ),
                         row=row,
                         col=col
@@ -303,6 +307,8 @@ def agg_plot(
                             mode='lines+markers',
                             marker=dict(color=agg_colors, size=agg_marker_size),
                             line=dict(color=agg_colors[0], width=agg_line_width),
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
                         ),
                         row=row,
                         col=col
@@ -316,6 +322,8 @@ def agg_plot(
                             mode='lines',
                             line=dict(color=agg_colors[0], width=agg_line_width),
                             legendgroup=overlay,
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
                         ),
                         row=row,
                         col=col
@@ -327,7 +335,9 @@ def agg_plot(
                             name=overlay,
                             mode='lines',
                             line=dict(color=agg_colors[0], width=0),
-                            legendgroup=overlay
+                            legendgroup=overlay,
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
                         ),
                         row=row,
                         col=col
@@ -340,7 +350,9 @@ def agg_plot(
                             mode='lines',
                             fill='tonexty',
                             line=dict(color=agg_colors[0], width=0),
-                            legendgroup=overlay
+                            legendgroup=overlay,
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
                         ),
                         row=row,
                         col=col
@@ -369,6 +381,8 @@ def agg_plot(
                             marker=dict(color=point_color, symbol='circle-open', opacity=0.8, size=10),
                             line=dict(width=1, color=line_color),
                             name=str(point),
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
                         ),
                         row=row,
                         col=col
@@ -388,7 +402,8 @@ def agg_plot(
         height=plot_height,
         template="simple_white",
         showlegend=False,
-        barmode=bar_mode
+        barmode=align_mode,
+        scattermode=align_mode if align_mode != 'stack' else 'overlay'
     )
     fig.update_xaxes(tickangle=tick_angle, title_text=x_title, dtick=x_dtick, matches='x')
     fig.update_yaxes(range=y_range, dtick=y_dtick, matches='y')
