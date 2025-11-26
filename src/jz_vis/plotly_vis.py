@@ -76,6 +76,7 @@ def agg_plot(
     sep_var=None,
     group_var=None,
     overlay_var=None,
+    nrows=1,
     central_tendency='mean',
     error_type='sem',
     datapoint_var='Subject',
@@ -105,7 +106,8 @@ def agg_plot(
     plot_width=600,
     plot_height=600,
     tick_angle=45,
-    h_spacing=0.1,
+    h_spacing=None,
+    v_spacing=None,
     shapes_to_add=None,
     show_fig=True,
     return_fig=False,
@@ -138,6 +140,8 @@ def agg_plot(
         name of the column in data by which to separate across subplots. Must be of type pd.Categorical. Default is None.
     overlay_var : str
         name of the column in data by which to overlay within a subplot. Must be of type pd.Categorical. Default is None.
+    nrows : int
+        Number of rows to fit the subplots into. Must be >=1. Default is 1.
     central_tendency : str
         which measure of central tendency to use when aggregating data. Default is 'mean'.
     error_type : str
@@ -189,8 +193,9 @@ def agg_plot(
         width and height of the plot. Defaults are 600 and 600.
     tick_angle : int
         angle at which x-axis label text is displayed. Default is 45.
-    h_spacing : float
-        spacing between subplots. Only used if sep_var is not None. Default is 0.1.
+    h_spacing, v_spacing : float
+        horizontal and vertical spacing between subplots, respectively. Only used if sep_var is not None. If None,
+        h_spacing=(1 / (ncols*2)) and v_spacing=(1 / (ncols*1.5)). Default is None.
     shapes_to_add : dict or list of dicts
         shape to be added to plot. Must be either a dict or a list of dicts of plotly shapes to be added. Default is None.
     show_fig : bool
@@ -231,12 +236,21 @@ def agg_plot(
         colors = {unique_val:color for color, unique_val in zip(colors, data[color_var].unique().sort_values())} # infer colors dict by their order if colors is list-like
 
     # initialize plot
+    n_subplots = data[sep_var].nunique()
+    ncols = int(np.ceil(n_subplots / nrows))
     subplot_titles = data[vars_dict['sep_var']].unique().sort_values()
-    fig = make_subplots(rows=1, cols=len(subplot_titles), subplot_titles=subplot_titles,
-                        horizontal_spacing=h_spacing, shared_yaxes=match_y_ranges)
+    h_spacing = (1 / (ncols*2)) if h_spacing is None else h_spacing
+    v_spacing = (1 / (ncols*1.5)) if v_spacing is None else v_spacing
+
+    fig = make_subplots(rows=nrows, cols=ncols, subplot_titles=subplot_titles,
+                        horizontal_spacing=h_spacing,
+                        vertical_spacing=v_spacing,
+                        shared_yaxes=match_y_ranges)
     
     # separate data by variables and plot
     for i, sep in enumerate(data[vars_dict['sep_var']].unique().sort_values()):
+        row = int(i / ncols) + 1
+        col = i % ncols + 1
         sep_data = data[data[vars_dict['sep_var']] == sep]
         for overlay in sep_data[vars_dict['overlay_var']].unique().sort_values():
             overlay_data = sep_data[sep_data[vars_dict['overlay_var']] == overlay]
@@ -263,8 +277,8 @@ def agg_plot(
                             marker=dict(color=agg_colors, line=dict(width=1, color='black'), opacity=opacity),
                             marker_pattern_shape=agg_marker_shape
                         ),
-                        row=1,
-                        col=i+1
+                        row=row,
+                        col=col
                     )
                 elif plot_mode.lower() == 'point':
                     fig.add_trace(
@@ -276,8 +290,8 @@ def agg_plot(
                             mode='markers',
                             marker=dict(color=agg_colors, size=agg_marker_size, line=dict(width=1, color='black'), opacity=opacity),
                         ),
-                        row=1,
-                        col=i+1
+                        row=row,
+                        col=col
                     )
                 elif plot_mode.lower() == 'line':
                     fig.add_trace(
@@ -290,8 +304,8 @@ def agg_plot(
                             marker=dict(color=agg_colors, size=agg_marker_size),
                             line=dict(color=agg_colors[0], width=agg_line_width),
                         ),
-                        row=1,
-                        col=i+1
+                        row=row,
+                        col=col
                     )
                 elif plot_mode.lower() == 'ribbon':
                     fig.add_trace(
@@ -303,8 +317,8 @@ def agg_plot(
                             line=dict(color=agg_colors[0], width=agg_line_width),
                             legendgroup=overlay,
                         ),
-                        row=1,
-                        col=i+1
+                        row=row,
+                        col=col
                     )
                     fig.add_trace(
                         go.Scatter(
@@ -315,8 +329,8 @@ def agg_plot(
                             line=dict(color=agg_colors[0], width=0),
                             legendgroup=overlay
                         ),
-                        row=1,
-                        col=i+1
+                        row=row,
+                        col=col
                     )
                     fig.add_trace(
                         go.Scatter(
@@ -328,8 +342,8 @@ def agg_plot(
                             line=dict(color=agg_colors[0], width=0),
                             legendgroup=overlay
                         ),
-                        row=1,
-                        col=i+1
+                        row=row,
+                        col=col
                     )
                 else:
                     raise Exception("Invalid plot_mode. Must be one of 'bar', 'point', or 'line'.")
@@ -356,13 +370,13 @@ def agg_plot(
                             line=dict(width=1, color=line_color),
                             name=str(point),
                         ),
-                        row=1,
-                        col=i+1
+                        row=row,
+                        col=col
                     )
 
     # configure plot
     if add_hline:
-        fig.add_hline(y=hline_y, row=1, col='all', line_width=1, opacity=1, line_color='black')
+        fig.add_hline(y=hline_y, row='all', col='all', line_width=1, opacity=1, line_color='black')
     fig.update_layout(
         dragmode="pan",
         font=dict(size=text_size, family=font_family),
@@ -377,7 +391,7 @@ def agg_plot(
         barmode=bar_mode
     )
     fig.update_xaxes(tickangle=tick_angle, title_text=x_title, dtick=x_dtick, matches='x')
-    fig.update_yaxes(range=y_range, dtick=y_dtick)
+    fig.update_yaxes(range=y_range, dtick=y_dtick, matches='y')
 
     # add shapes
     if shapes_to_add is not None:
@@ -385,8 +399,9 @@ def agg_plot(
             shapes_to_add = [shapes_to_add] # if dict, turn to list of one element
         if type(shapes_to_add) == list:
             for shape in shapes_to_add:
-                for col in np.arange(len(subplot_titles)):
-                    fig.add_shape(shape, row=1, col=col+1)
+                for row in np.arange(nrows):
+                    for col in np.arange(ncols):
+                        fig.add_shape(shape, row=row, col=col)
         else:
             raise Exception("Invalid argument type 'shapes_to_add'. Must be one of dict or list.")
 
