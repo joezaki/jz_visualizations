@@ -195,7 +195,7 @@ def agg_plot(
         angle at which x-axis label text is displayed. Default is 45.
     h_spacing, v_spacing : float
         horizontal and vertical spacing between subplots, respectively. Only used if sep_var is not None. If None,
-        h_spacing=(1 / (ncols*2)) and v_spacing=(1 / (ncols*1.5)). Default is None.
+        h_spacing=(1/(ncols*5)) and v_spacing=(1/(ncols*2)). Default is None.
     shapes_to_add : dict or list of dicts
         shape to be added to plot. Must be either a dict or a list of dicts of plotly shapes to be added. Default is None.
     show_fig : bool
@@ -236,11 +236,11 @@ def agg_plot(
         colors = {unique_val:color for color, unique_val in zip(colors, data[color_var].unique().sort_values())} # infer colors dict by their order if colors is list-like
 
     # initialize plot
-    n_subplots = data[sep_var].nunique()
+    n_subplots = data[vars_dict['sep_var']].nunique()
     ncols = int(np.ceil(n_subplots / nrows))
     subplot_titles = data[vars_dict['sep_var']].unique().sort_values()
-    h_spacing = (1 / (ncols*2)) if h_spacing is None else h_spacing
-    v_spacing = (1 / (ncols*1.5)) if v_spacing is None else v_spacing
+    h_spacing = (1 / (ncols*5)) if h_spacing is None else h_spacing
+    v_spacing = (1 / (ncols*2)) if v_spacing is None else v_spacing
 
     fig = make_subplots(rows=nrows, cols=ncols, subplot_titles=subplot_titles,
                         horizontal_spacing=h_spacing,
