@@ -712,7 +712,7 @@ def correlation_plot(
 # -----------------------------------------
 
 
-def raster_histogram_plot(
+def raster_plot(
         raster,
         time,
         trials=None,
