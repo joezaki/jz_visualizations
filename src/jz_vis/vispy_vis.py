@@ -191,7 +191,7 @@ class Vis:
         if add_xaxis:
             xaxis = scene.AxisWidget(orientation='bottom', axis_label=x_label, **axis_kwargs)
             xaxis.height_max = 40
-            nested_grid.add_widget(xaxis, row=1, col=1)
+            nested_grid.add_widget(xaxis, row=1, col=1 if add_yaxis else 0)
         
         if add_yaxis:
             yaxis = scene.AxisWidget(orientation='left', axis_label=y_label, **axis_kwargs)
@@ -199,7 +199,7 @@ class Vis:
             nested_grid.add_widget(yaxis, row=0, col=0)
 
         # Link axes to the view
-        view = nested_grid.add_view(row=0, col=1)
+        view = nested_grid.add_view(row=0, col=1 if add_yaxis else 0)
         view.border_color = 'black'
         if magnify:
             view.camera = Magnify1DCamera(mag=1, size_factor=mag_size_factor, radius_ratio=mag_radius_ratio)
