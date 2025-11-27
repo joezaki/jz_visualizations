@@ -722,3 +722,104 @@ class Vis:
             self.draw_ranges[name][draw_num] = dict(x=(cur_x.min(), cur_x.max()),
                                                     y=(cur_y.min(), cur_y.max()))
 
+
+    def draw_3d(
+            self,
+            x,
+            y,
+            z,
+            name='3d',
+            plot_mode='scatter',
+            show_3d_axes=True,
+            marker_color='white',
+            marker_size=5,
+            outline_width=1,
+            outline_color='black',
+            marker_symbol='o',
+            opacity=1,
+            line_color='black',
+            line_width=2,
+            **kwargs
+    ):
+        '''
+        Plot a 3d either line or scatter plot, given equal length x, y, and z vectors.
+        Note: This does not support plotting with a slider.
+
+        Parameters
+        ==========
+        x, y, z : 1d arrays
+            equivalent length 1d arrays to be plotted in 3d.
+        name : str
+            name of the view, if previously added to view_coords. If view_coords is
+            empty, a single sub-grid at (0,0) will be created.
+        plot_mode : str
+            one of 'scatter' or 'line' to plot either a scatter or line plot. Default is 'scatter'.
+        show_3d_axes : bool
+            whether or not to show 3d axes in the 3d plot. Default is True.
+        marker_color : str
+            color of the datapoints, represented as a str (word or hex) or a tuple of RGB values. If 
+            a list/array of values, it will be interpreted that each color represents each x/y/z value
+            in order. Only used if plot_mode=='scatter'. Default is 'white'.
+        marker_size : int/float or list/1d array
+            size of the datapoints. If list/array, must be the same length as x/y/z. Only used if
+            plot_mode=='scatter'. Default is 5.
+        outline_width : int or float
+            width of the line outlining each scatterpoint. Only used if plot_mode=='scatter'. Default is 1.
+        outline_color : str
+            color of the line outlining each scatterpoint. ONly used if plot_mode=='scatter'. Default is 'black'.
+        marker_symbol : str
+            symbol to be used for the scatterpoints. Only used if plot_mode=='scatter'. Default is 'o'.
+        opacity : float
+            a floating number from [0,1] designating the transparency of the scatterpoints. Only used
+            if plot_mode=='scatter'. Default is 1.
+        line_color : str or list
+            color of the line. If list, must be length of x/y/z. Only used if plot_mode=='line'. Default is 'black'.
+        line_width : int or float
+            width of the line. Only used if plot_mode=='line'. Default is 2.
+        '''
+        
+        # if no view has previously been set, create a single sub-grid for this plot
+        if len(self.view_coords) == 0:
+            self.view_coords[name] = (0, 0)
+
+        if name not in self.view_dict.keys():
+            view = self.add_axes_view(name=name, **kwargs)
+            self.view_dict[name] = view
+            self.draw_ranges[name] = {}
+        
+        draw_num = len(self.view_dict[name].scene.children) - 1
+        
+        # plot line or scatter
+        if plot_mode.lower() == 'line':
+            data = scene.Line(pos=np.column_stack((x,y,z)),
+                              color=line_color, width=line_width,
+                              parent=self.view_dict[name].scene)
+        elif plot_mode.lower() == 'scatter':
+            data = visuals.Markers(parent=self.view_dict[name].scene)
+            data.set_data(
+                pos=np.array([x,y,z]).T,
+                edge_width=outline_width,
+                edge_color=outline_color,
+                face_color=marker_color,
+                size=marker_size,
+                symbol=marker_symbol
+                )
+            data.antialias = 0
+            data.alpha = opacity
+            data.set_gl_state('translucent')
+        else:
+            raise Exception("Invalid plot_mode. Must be one of ['line', 'scatter'].")
+
+        self.view_dict[name].add(data)
+        self.view_dict[name].camera = 'turntable'
+
+        if show_3d_axes:
+            axis = visuals.XYZAxis(
+                parent=self.view_dict[name].scene,
+                width=2,
+                # color='black',
+                )
+
+        self.canvas.update()
+        self.draw_ranges[name][draw_num] = dict(x=(x.min(), x.max()),
+                                                y=(y.min(), y.max()))
