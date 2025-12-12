@@ -1,4 +1,5 @@
 import os
+import shutil
 import warnings
 import numpy as np
 from statsmodels.regression.linear_model import OLS
@@ -10,7 +11,9 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
+import plotly.io
 from matplotlib.colors import to_rgb
+import PIL.Image
 
 
 # -----------------------------------------
@@ -891,3 +894,77 @@ def raster_plot(
         fig.show(config=config)
     if return_fig:
         return fig
+
+
+# -----------------------------------------
+
+
+def figs_to_gif(
+        figs,
+        save_path,
+        temp_save_path='./temp_gif_frames',
+        format='png',
+        scale=2,
+        height=800,
+        width=800,
+        duration=100,
+        loop=0
+        ):
+    '''
+    For a given list of frame images, create and save a gif looping through them.
+
+    Parameters
+    ==========
+    figs : list
+        list of plotly figures to stitch together.
+    save_path : str
+        directory including file name and extension to which to save final gif.
+    temp_save_path : str
+        directory where frames will temporarily be stored. Default is './temp_gif_frames'.
+    format : str
+        format to save frames in. One of ['png', 'jpg', 'jpeg', 'webp', 'svg', 'pdf']. Default is 'png'.
+    scale : int or float
+        scaling factor to up- or down-scale saved images. Default is 2.
+    height, width : int
+        height and width that each frame will be saved at, respectively. Defaults are 800.
+    duration : int
+        duration of each frame in ms. Default is 100.
+    loop : int
+        number of times to loop through the frames, infinite if 0. Default is 0.
+    '''
+
+    # make temporary save path for frames, create filenames
+    temp_save_path = os.path.abspath(temp_save_path)
+    if not os.path.exists(temp_save_path):
+        os.makedirs(temp_save_path)
+    filenames = [os.path.join(temp_save_path, f'frame{i}.{format}') \
+                 for i in range(len(figs))]
+    
+    # temporarily save frames (most time intensive step)
+    print('saving temporary frame files.')
+    plotly.io.write_images(
+        fig=figs,
+        file=filenames,
+        scale=scale,
+        height=height,
+        width=width
+        )
+    print('temporary frame files saved.')
+
+    # load saved frames
+    frames = [PIL.Image.open(file) for file in filenames]
+
+    # write gif
+    if frames:
+        frames[0].save(
+            save_path,
+            save_all=True,
+            append_images=frames[1:],
+            duration=duration, # ms per frame
+            loop=loop
+        )
+        print("GIF saved successfully.")
+    
+    # delete saved frames
+    shutil.rmtree(temp_save_path)
+    print('temporary frame files deleted.')
