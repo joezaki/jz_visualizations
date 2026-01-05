@@ -591,8 +591,8 @@ class Vis:
 
     def draw_scatter(
             self,
-            x,
             y,
+            x=None,
             name='scatter',
             title_ls=None,
             marker_color='white',
@@ -610,9 +610,12 @@ class Vis:
 
         Parameters
         ==========
-        x, y : 1d arrays or lists of 1d arrays
-            if each 1d array, will plot single scatter plot. If two lists of 1d arrays, a slider
-            will be created and each 1d array in the list will be plotted along the slider.
+        y : 1d array or list of 1d arrays
+            if 1d array, will plot single line. If list of 1d arrays, a slider will
+            be created and each 1d array in the list will be plotted along the slider.
+        x : 1d array or list or 1d arrays
+            associated x-axis values for y. If provided, len(x) must match len(y). If
+            None, x will be inferred as np.arange(0, len(y)) for each provided y.
         name : str
             name of the view, if previously added to view_coords. If view_coords is
             empty, a single sub-grid at (0,0) will be created.
@@ -649,6 +652,13 @@ class Vis:
             self.draw_ranges[name] = {}
         
         draw_num = len(self.view_dict[name].scene.children) - 1
+
+        # if x is not provided, create x as a range from 0 to N for each y
+        if x is None:
+            if type(y) is list:
+                x = [np.arange(0,len(cur_y)) for cur_y in y]
+            else:
+                x = np.arange(0,len(y))
 
         # set current data
         if type(y) is not list:
