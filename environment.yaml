@@ -1,4 +1,4 @@
-name: jzvis
+name: scivis
 channels:
   - conda-forge
   - defaults
