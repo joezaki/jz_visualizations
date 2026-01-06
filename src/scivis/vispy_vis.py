@@ -39,6 +39,15 @@ class Vis:
     view_dict : dict
         dictionary where each key is the name of the given subplot (to match keys in view_coords) and
         the value is the associated Vispy view object of that subplot.
+    grid_dict : dict
+        dictionary where each key is the name of a given subplot (to match keys in view_coords) and
+        the value is the associated VisPy nested grid that comprises that subplot.
+    draw_ranges : dict
+        dictionary where each key is the name of a given subplot (to match keys in view_coords) and
+        the value is a nested dictionary of the view x/y ranges of all draw calls in that view.
+    view_ranges : dict
+        dictionary where each key is the name of a given subplot (to match keys in view_coords) and
+        the value is a dictionary of the final x/y range to be used for that view.
     max_gl_size : int
         max texture size that your GPU supports, used to ensure all data are properly rendered.
     '''
@@ -96,10 +105,12 @@ class Vis:
             spacing=grid_spacing
             )
 
-        # dictionary of all views, axes, and grids to be added
+        # dictionary of all views, axes, grids, and x/y-ranges to be added
         self.view_coords = {}
         self.view_dict = {}
         self.grid_dict = {}
+        self.draw_ranges = {} # all ranges in all draws for each view
+        self.view_ranges = {} # final range to be used for each view
 
         self.max_gl_size = gloo.gl.glGetParameter(gloo.gl.GL_MAX_TEXTURE_SIZE)
 
@@ -108,6 +119,7 @@ class Vis:
         '''
         Render canvas with any additional plots in a pop-up window.
         '''
+        self.configure_double_click()
         print('showing')
         self.win.show()
         self.qt_app.exec_()
@@ -123,6 +135,7 @@ class Vis:
         save_path : str
             directory with filename and extension, to which to save the image
         '''
+        self.configure_double_click()
         io.imsave(save_path, self.canvas.render())
     
 
@@ -137,7 +150,7 @@ class Vis:
             add_yaxis=True,
             magnify=False,
             mag_size_factor=10,
-            mag_radius_ratio=1
+            mag_radius_ratio=1,
             ):
         '''
         Add x- and y-axes to a given subplot, given the view
@@ -158,6 +171,7 @@ class Vis:
         mag_size_factor : int
             by what factor to magnify. Only used if magnify=True. Default is 10.
         mag_radius_ratio : int
+            radius of the magnification. Only used if magnify=True. Default is 1.
         '''
 
         row, col = self.view_coords[name]
@@ -177,7 +191,7 @@ class Vis:
         if add_xaxis:
             xaxis = scene.AxisWidget(orientation='bottom', axis_label=x_label, **axis_kwargs)
             xaxis.height_max = 40
-            nested_grid.add_widget(xaxis, row=1, col=1)
+            nested_grid.add_widget(xaxis, row=1, col=1 if add_yaxis else 0)
         
         if add_yaxis:
             yaxis = scene.AxisWidget(orientation='left', axis_label=y_label, **axis_kwargs)
@@ -185,7 +199,7 @@ class Vis:
             nested_grid.add_widget(yaxis, row=0, col=0)
 
         # Link axes to the view
-        view = nested_grid.add_view(row=0, col=1)
+        view = nested_grid.add_view(row=0, col=1 if add_yaxis else 0)
         view.border_color = 'black'
         if magnify:
             view.camera = Magnify1DCamera(mag=1, size_factor=mag_size_factor, radius_ratio=mag_radius_ratio)
@@ -200,6 +214,53 @@ class Vis:
         self.grid_dict[name] = nested_grid
 
         return view
+
+
+    def scale_view(
+            self,
+            name
+    ):
+        '''
+        Given the name of a view, compute the min and max ranges
+        of this view based on all the data currently plotted in the
+        view, and update the range of the view.
+        '''
+        # compute final view_range for this view
+        self.view_ranges[name] = dict(
+            x=(np.min([val['x'][0] for val in self.draw_ranges[name].values()]),
+               np.max([val['x'][1] for val in self.draw_ranges[name].values()])),
+            y=(np.min([val['y'][0] for val in self.draw_ranges[name].values()]),
+               np.max([val['y'][1] for val in self.draw_ranges[name].values()])))
+
+        # update view range
+        if any([isinstance(ch, scene.Image) for ch in self.view_dict[name].scene.children]):
+            self.view_dict[name].camera.rect = (
+                self.view_ranges[name]['x'][0],
+                self.view_ranges[name]['y'][0],
+                self.view_ranges[name]['x'][1],
+                self.view_ranges[name]['y'][1]
+                )
+        else:
+            self.view_dict[name].camera.set_range(
+                x=self.view_ranges[name]['x'],
+                y=self.view_ranges[name]['y']
+                )
+
+
+    def configure_double_click(
+            self
+    ):
+        '''
+        Compute and assign the value ranges to reset for each
+        view when a double click is detected.
+        '''
+        def on_mouse_double_click(event):
+            for name in self.view_dict.keys():
+                self.scale_view(name=name)
+
+        # attach to double click and initialize scaling
+        self.canvas.events.mouse_double_click.connect(on_mouse_double_click)
+        on_mouse_double_click(0)
 
 
     def on_key_press(
@@ -304,7 +365,7 @@ class Vis:
         for x_tile in x_indices:
             for y_tile in y_indices:
                 image = scene.Image(
-                    data[np.ix_(x_tile,y_tile)].astype(np.float32),
+                    data[np.ix_(y_tile,x_tile)].astype(np.float32),
                     clim=clim,
                     cmap=cmap,
                     parent=view.scene
@@ -320,6 +381,7 @@ class Vis:
             title_ls=None,
             scale_image=True,
             cmap='viridis',
+            global_scaling=False,
             **kwargs
     ):
         '''
@@ -349,7 +411,12 @@ class Vis:
         if len(self.view_coords) == 0:
             self.view_coords[name] = (0, 0)
 
-        view = self.add_axes_view(name=name, **kwargs)
+        if name not in self.view_dict.keys():
+            view = self.add_axes_view(name=name, **kwargs)
+            self.view_dict[name] = view
+            self.draw_ranges[name] = {}
+        
+        draw_num = len(self.view_dict[name].scene.children) - 1
 
         # set current data
         if type(data) is not list:
@@ -360,9 +427,9 @@ class Vis:
         # plot image
         if cur_data.size > self.max_gl_size:
             print('data size > max_gl_size; plotting multiscale')
-            self.draw_multiscale_image(data=cur_data, view=view, cmap=cmap)
+            self.draw_multiscale_image(data=cur_data, view=self.view_dict[name], cmap=cmap)
         else:
-            image = scene.Image(data=cur_data, parent=view.scene, cmap=cmap)
+            image = scene.Image(data=cur_data, parent=self.view_dict[name].scene, cmap=cmap)
 
         # if data is a list, create a slider to pan through it
         if type(data) is list:
@@ -370,31 +437,38 @@ class Vis:
                 title_ls = [f'Step {x}' for x in range(len(data))]
             self.add_slider(slider_size=len(data))
 
+            if global_scaling:
+                x_max = np.max([im.shape[1] for im in data])
+                y_max = np.max([im.shape[0] for im in data])
+                self.draw_ranges[name][draw_num] = dict(x=(0, x_max),
+                                                        y=(0, y_max))
+
             def update_plot(index):
                 cur_data = data[index].astype(np.float32)
                 if cur_data.size > self.max_gl_size:
-                    for visual in list(view.scene.children):
+                    for visual in list(self.view_dict[name].scene.children):
                         if type(visual) is scene.Image:
                             visual.parent = None
-                    self.draw_multiscale_image(data=cur_data, view=view, cmap=cmap)
+                    self.draw_multiscale_image(data=cur_data, view=self.view_dict[name], cmap=cmap)
                 else:
                     image.set_data(cur_data)
+                
+                if not global_scaling:
+                    self.draw_ranges[name][draw_num] = dict(x=(0, cur_data.shape[1]),
+                                                            y=(0, cur_data.shape[0]))
                 self.win.setWindowTitle(title_ls[index])
+                self.scale_view(name=name)
                 self.canvas.update()
             self.slider.valueChanged.connect(update_plot)
             self.canvas.events.key_press.connect(self.on_key_press)
-        
-        # reset view on double click
-        def on_mouse_double_click(event):
-            view.camera.rect = (0, 0, cur_data.shape[1], cur_data.shape[0])
-        self.canvas.events.mouse_double_click.connect(on_mouse_double_click)
-        on_mouse_double_click(0)
+            update_plot(0)
+        else:
+            self.draw_ranges[name][draw_num] = dict(x=(0, cur_data.shape[1]),
+                                                    y=(0, cur_data.shape[0]))
 
         if not scale_image:
-            view.camera.aspect=1
+            self.view_dict[name].camera.aspect=1
 
-        self.view_dict[name] = view
-    
 
     def draw_line(
             self,
@@ -403,7 +477,7 @@ class Vis:
             name='line',
             title_ls=None,
             line_color='black',
-            same_scale=False,
+            global_scaling=False,
             **kwargs
     ):
         '''
@@ -426,7 +500,7 @@ class Vis:
             the slider. If None, titles will become 'Step X' for each step. Default is None.
         line_color : str or list of str
             color of the line, or a list of colors if y is a list. Default is 'black'.
-        same_scale : bool
+        global_scaling : bool
             if False, re-scale y-axis when panning through slider. Only used if y is
             a list. Default is False.
         **kwargs
@@ -437,7 +511,12 @@ class Vis:
         if len(self.view_coords) == 0:
             self.view_coords[name] = (0, 0)
 
-        view = self.add_axes_view(name=name, **kwargs)
+        if name not in self.view_dict.keys():
+            view = self.add_axes_view(name=name, **kwargs)
+            self.view_dict[name] = view
+            self.draw_ranges[name] = {}
+        
+        draw_num = len(self.view_dict[name].scene.children) - 1
         
         # if x is not provided, create x as a range from 0 to N for each y
         if x is None:
@@ -462,7 +541,8 @@ class Vis:
 
         # plot line
         line = scene.Line(pos=np.column_stack((cur_x, cur_y)),
-                            color=cur_line_color, width=1, parent=view.scene)
+                          color=cur_line_color, width=1, 
+                          parent=self.view_dict[name].scene)
         
         # if data is a list, create a slider to pan through it
         if type(y) is list:
@@ -470,11 +550,13 @@ class Vis:
                 title_ls = [f'Step {x}' for x in range(len(y))]
             self.add_slider(slider_size=len(y))
 
-            if same_scale: # global scaling
+            if global_scaling: # same scale across all slider locations
                 x_min = np.min([cur_x.min() for cur_x in x])
                 x_max = np.max([cur_x.max() for cur_x in x])
                 y_min = np.min([cur_y.min() for cur_y in y])
                 y_max = np.max([cur_y.max() for cur_y in y])
+                self.draw_ranges[name][draw_num] = dict(x=(x_min, x_max),
+                                                        y=(y_min, y_max))
 
             def update_plot(index):
                 nonlocal cur_x, cur_y
@@ -491,34 +573,26 @@ class Vis:
                 self.win.setWindowTitle(title_ls[index])
                 self.canvas.update()
 
-                if same_scale:
-                    view.camera.set_range(x=(x_min,x_max),
-                                          y=(y_min,y_max))
-                else:
-                    on_mouse_double_click(0)
+                # update view range
+                if not global_scaling:
+                    self.draw_ranges[name][draw_num] = dict(x=(cur_x.min(), cur_x.max()),
+                                                            y=(cur_y.min(), cur_y.max()))
+                self.scale_view(name=name)
+                
+
             self.slider.valueChanged.connect(update_plot)
             self.canvas.events.key_press.connect(self.on_key_press)
-
-        # configure view and add double click reset
-        def on_mouse_double_click(event):
-            view.camera.set_range(x=(cur_x.min(),cur_x.max()),
-                                  y=(cur_y.min(),cur_y.max()))
-        self.canvas.events.mouse_double_click.connect(on_mouse_double_click)
-
-        # initialize scaling
-        if same_scale:
-            view.camera.set_range(x=(x_min,x_max),
-                                  y=(y_min,y_max))
+            update_plot(0)
         else:
-            on_mouse_double_click(0)
+            self.draw_ranges[name][draw_num] = dict(x=(cur_x.min(), cur_x.max()),
+                                                    y=(cur_y.min(), cur_y.max()))
 
-        self.view_dict[name] = view
 
 
     def draw_scatter(
             self,
-            x,
             y,
+            x=None,
             name='scatter',
             title_ls=None,
             marker_color='white',
@@ -527,7 +601,7 @@ class Vis:
             outline_width=1,
             outline_color='black',
             marker_symbol='o',
-            same_scale=False,
+            global_scaling=False,
             **kwargs
     ):
         '''
@@ -536,9 +610,12 @@ class Vis:
 
         Parameters
         ==========
-        x, y : 1d arrays or lists of 1d arrays
-            if each 1d array, will plot single scatter plot. If two lists of 1d arrays, a slider
-            will be created and each 1d array in the list will be plotted along the slider.
+        y : 1d array or list of 1d arrays
+            if 1d array, will plot single line. If list of 1d arrays, a slider will
+            be created and each 1d array in the list will be plotted along the slider.
+        x : 1d array or list or 1d arrays
+            associated x-axis values for y. If provided, len(x) must match len(y). If
+            None, x will be inferred as np.arange(0, len(y)) for each provided y.
         name : str
             name of the view, if previously added to view_coords. If view_coords is
             empty, a single sub-grid at (0,0) will be created.
@@ -558,7 +635,7 @@ class Vis:
             color of the line outlining each scatterpoint. Default is 'black'.
         marker_symbol : str
             the styling of each scatterpoint. Default is 'o'.
-        same_scale : bool
+        global_scaling : bool
             if False, re-scale y-axis when panning through slider. Only used if y is
             a list. Default is False.
         **kwargs
@@ -569,7 +646,19 @@ class Vis:
         if len(self.view_coords) == 0:
             self.view_coords[name] = (0, 0)
 
-        view = self.add_axes_view(name=name, **kwargs)
+        if name not in self.view_dict.keys():
+            view = self.add_axes_view(name=name, **kwargs)
+            self.view_dict[name] = view
+            self.draw_ranges[name] = {}
+        
+        draw_num = len(self.view_dict[name].scene.children) - 1
+
+        # if x is not provided, create x as a range from 0 to N for each y
+        if x is None:
+            if type(y) is list:
+                x = [np.arange(0,len(cur_y)) for cur_y in y]
+            else:
+                x = np.arange(0,len(y))
 
         # set current data
         if type(y) is not list:
@@ -588,7 +677,7 @@ class Vis:
             marker_color = Color(marker_color, alpha=opacity)
 
         # plot scatter
-        scatter = visuals.Markers(parent=view.scene)
+        scatter = visuals.Markers(parent=self.view_dict[name].scene)
         scatter.set_data(
             pos=np.array([cur_x,cur_y]).T,
             edge_width=outline_width,
@@ -607,11 +696,13 @@ class Vis:
                 title_ls = [f'Step {x}' for x in range(len(y))]
             self.add_slider(slider_size=len(y))
 
-            if same_scale: # global scaling
+            if global_scaling: # same scale across all slider locations
                 x_min = np.min([cur_x.min() for cur_x in x])
                 x_max = np.max([cur_x.max() for cur_x in x])
                 y_min = np.min([cur_y.min() for cur_y in y])
                 y_max = np.max([cur_y.max() for cur_y in y])
+                self.draw_ranges[name][draw_num] = dict(x=(x_min, x_max),
+                                                        y=(y_min, y_max))
 
             def update_plot(index):
                 nonlocal cur_x, cur_y
@@ -629,25 +720,116 @@ class Vis:
                 self.win.setWindowTitle(title_ls[index])
                 self.canvas.update()
 
-                if same_scale:
-                    view.camera.set_range(x=(x_min,x_max),
-                                          y=(y_min,y_max))
-                else:
-                    on_mouse_double_click(0)
+                # update view range
+                if not global_scaling:
+                    self.draw_ranges[name][draw_num] = dict(x=(cur_x.min(), cur_x.max()),
+                                                            y=(cur_y.min(), cur_y.max()))
+                self.scale_view(name=name)
             self.slider.valueChanged.connect(update_plot)
             self.canvas.events.key_press.connect(self.on_key_press)
-
-        # configure view and add double click reset
-        def on_mouse_double_click(event):
-            view.camera.set_range(x=(cur_x.min(),cur_x.max()),
-                                  y=(cur_y.min(),cur_y.max()))
-        self.canvas.events.mouse_double_click.connect(on_mouse_double_click)
-
-        # initialize scaling
-        if same_scale:
-            view.camera.set_range(x=(x_min,x_max),
-                                  y=(y_min,y_max))
+            update_plot(0)
         else:
-            on_mouse_double_click(0)
+            self.draw_ranges[name][draw_num] = dict(x=(cur_x.min(), cur_x.max()),
+                                                    y=(cur_y.min(), cur_y.max()))
 
-        self.view_dict[name] = view
+
+    def draw_3d(
+            self,
+            x,
+            y,
+            z,
+            name='3d',
+            plot_mode='scatter',
+            show_3d_axes=True,
+            marker_color='white',
+            marker_size=5,
+            outline_width=1,
+            outline_color='black',
+            marker_symbol='o',
+            opacity=1,
+            line_color='black',
+            line_width=2,
+            **kwargs
+    ):
+        '''
+        Plot a 3d either line or scatter plot, given equal length x, y, and z vectors.
+        Note: This does not support plotting with a slider.
+
+        Parameters
+        ==========
+        x, y, z : 1d arrays
+            equivalent length 1d arrays to be plotted in 3d.
+        name : str
+            name of the view, if previously added to view_coords. If view_coords is
+            empty, a single sub-grid at (0,0) will be created.
+        plot_mode : str
+            one of 'scatter' or 'line' to plot either a scatter or line plot. Default is 'scatter'.
+        show_3d_axes : bool
+            whether or not to show 3d axes in the 3d plot. Default is True.
+        marker_color : str
+            color of the datapoints, represented as a str (word or hex) or a tuple of RGB values. If 
+            a list/array of values, it will be interpreted that each color represents each x/y/z value
+            in order. Only used if plot_mode=='scatter'. Default is 'white'.
+        marker_size : int/float or list/1d array
+            size of the datapoints. If list/array, must be the same length as x/y/z. Only used if
+            plot_mode=='scatter'. Default is 5.
+        outline_width : int or float
+            width of the line outlining each scatterpoint. Only used if plot_mode=='scatter'. Default is 1.
+        outline_color : str
+            color of the line outlining each scatterpoint. ONly used if plot_mode=='scatter'. Default is 'black'.
+        marker_symbol : str
+            symbol to be used for the scatterpoints. Only used if plot_mode=='scatter'. Default is 'o'.
+        opacity : float
+            a floating number from [0,1] designating the transparency of the scatterpoints. Only used
+            if plot_mode=='scatter'. Default is 1.
+        line_color : str or list
+            color of the line. If list, must be length of x/y/z. Only used if plot_mode=='line'. Default is 'black'.
+        line_width : int or float
+            width of the line. Only used if plot_mode=='line'. Default is 2.
+        '''
+        
+        # if no view has previously been set, create a single sub-grid for this plot
+        if len(self.view_coords) == 0:
+            self.view_coords[name] = (0, 0)
+
+        if name not in self.view_dict.keys():
+            view = self.add_axes_view(name=name, **kwargs)
+            self.view_dict[name] = view
+            self.draw_ranges[name] = {}
+        
+        draw_num = len(self.view_dict[name].scene.children) - 1
+        
+        # plot line or scatter
+        if plot_mode.lower() == 'line':
+            data = scene.Line(pos=np.column_stack((x,y,z)),
+                              color=line_color, width=line_width,
+                              parent=self.view_dict[name].scene)
+        elif plot_mode.lower() == 'scatter':
+            data = visuals.Markers(parent=self.view_dict[name].scene)
+            data.set_data(
+                pos=np.array([x,y,z]).T,
+                edge_width=outline_width,
+                edge_color=outline_color,
+                face_color=marker_color,
+                size=marker_size,
+                symbol=marker_symbol
+                )
+            data.antialias = 0
+            data.alpha = opacity
+            data.set_gl_state('translucent')
+        else:
+            raise Exception("Invalid plot_mode. Must be one of ['line', 'scatter'].")
+
+        self.view_dict[name].add(data)
+        self.view_dict[name].camera = 'turntable'
+
+        if show_3d_axes:
+            axis = visuals.XYZAxis(
+                parent=self.view_dict[name].scene,
+                width=2,
+                # color='black',
+                )
+
+        self.canvas.update()
+        self.draw_ranges[name][draw_num] = dict(x=(x.min(), x.max()),
+                                                y=(y.min(), y.max()))

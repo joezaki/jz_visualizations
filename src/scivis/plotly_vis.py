@@ -1,4 +1,5 @@
 import os
+import shutil
 import warnings
 import numpy as np
 from statsmodels.regression.linear_model import OLS
@@ -10,7 +11,9 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
+import plotly.io
 from matplotlib.colors import to_rgb
+import PIL.Image
 
 
 # -----------------------------------------
@@ -76,12 +79,13 @@ def agg_plot(
     sep_var=None,
     group_var=None,
     overlay_var=None,
+    nrows=1,
     central_tendency='mean',
     error_type='sem',
     datapoint_var='Subject',
     plot_mode='bar',
     plot_agg=True,
-    bar_mode='group',
+    align_mode='group',
     plot_datapoints=False,
     plot_datalines=False,
     agg_marker_size=15,
@@ -105,8 +109,11 @@ def agg_plot(
     plot_width=600,
     plot_height=600,
     tick_angle=45,
-    h_spacing=0.1,
+    h_spacing=None,
+    v_spacing=None,
     shapes_to_add=None,
+    show_fig=True,
+    return_fig=False,
     save_path=None,
     plot_scale=5
     ):
@@ -136,6 +143,8 @@ def agg_plot(
         name of the column in data by which to separate across subplots. Must be of type pd.Categorical. Default is None.
     overlay_var : str
         name of the column in data by which to overlay within a subplot. Must be of type pd.Categorical. Default is None.
+    nrows : int
+        Number of rows to fit the subplots into. Must be >=1. Default is 1.
     central_tendency : str
         which measure of central tendency to use when aggregating data. Default is 'mean'.
     error_type : str
@@ -146,8 +155,8 @@ def agg_plot(
         one of 'bar', 'line', or 'point' for which type of plot is desired. Default is 'bar'.
     plot_agg : bool
         whether or not to plot the aggregate data. Default is True.
-    bar_mode : str
-        how to group bars along the overlay_var variable. One of 'group' or 'overlay'. Only used if plot_mode=='bar'. Default is 'group'.
+    align_mode : str
+        how to group aggregated data along the overlay_var variable. One of ['group', 'overlay', 'stack']. Default is 'group'.
     plot_datapoints, plot_datalines : bool
         whether or not to plot individual subject datapoints of datalines. Defaults are False.
     agg_marker_size : int or float
@@ -187,10 +196,15 @@ def agg_plot(
         width and height of the plot. Defaults are 600 and 600.
     tick_angle : int
         angle at which x-axis label text is displayed. Default is 45.
-    h_spacing : float
-        spacing between subplots. Only used if sep_var is not None. Default is 0.1.
+    h_spacing, v_spacing : float
+        horizontal and vertical spacing between subplots, respectively. Only used if sep_var is not None. If None,
+        h_spacing=(1/(ncols*5)) and v_spacing=(1/(ncols*2)). Default is None.
     shapes_to_add : dict or list of dicts
         shape to be added to plot. Must be either a dict or a list of dicts of plotly shapes to be added. Default is None.
+    show_fig : bool
+        whether or not to display the figure. Default is True.
+    return_fig : bool
+        whether or not to return the fig object. Default is False.
     save_path : str
         file path location including filename where plot should be saved. If None, plot will not be saved. Default is None.
     plot_scale : int
@@ -225,12 +239,21 @@ def agg_plot(
         colors = {unique_val:color for color, unique_val in zip(colors, data[color_var].unique().sort_values())} # infer colors dict by their order if colors is list-like
 
     # initialize plot
+    n_subplots = data[vars_dict['sep_var']].nunique()
+    ncols = int(np.ceil(n_subplots / nrows))
     subplot_titles = data[vars_dict['sep_var']].unique().sort_values()
-    fig = make_subplots(rows=1, cols=len(subplot_titles), subplot_titles=subplot_titles,
-                        horizontal_spacing=h_spacing, shared_yaxes=match_y_ranges)
+    h_spacing = (1 / (ncols*5)) if h_spacing is None else h_spacing
+    v_spacing = (1 / (ncols*2)) if v_spacing is None else v_spacing
+
+    fig = make_subplots(rows=nrows, cols=ncols, subplot_titles=subplot_titles,
+                        horizontal_spacing=h_spacing,
+                        vertical_spacing=v_spacing,
+                        shared_yaxes=match_y_ranges)
     
     # separate data by variables and plot
     for i, sep in enumerate(data[vars_dict['sep_var']].unique().sort_values()):
+        row = int(i / ncols) + 1
+        col = i % ncols + 1
         sep_data = data[data[vars_dict['sep_var']] == sep]
         for overlay in sep_data[vars_dict['overlay_var']].unique().sort_values():
             overlay_data = sep_data[sep_data[vars_dict['overlay_var']] == overlay]
@@ -255,27 +278,31 @@ def agg_plot(
                             error_y=dict(type='data', array=error_data[plot_var][xlabels].values, visible=True, width=error_width),
                             name=overlay,
                             marker=dict(color=agg_colors, line=dict(width=1, color='black'), opacity=opacity),
-                            marker_pattern_shape=agg_marker_shape
+                            marker_pattern_shape=agg_marker_shape,
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
                         ),
-                        row=1,
-                        col=i+1
+                        row=row,
+                        col=col
                     )
                 elif plot_mode.lower() == 'point':
                     fig.add_trace(
-                        go.Scattergl(
+                        go.Scatter(
                             x=xlabels,
                             y=agg_data[plot_var][xlabels].values,
                             error_y=dict(type='data', array=error_data[plot_var][xlabels].values, visible=True, width=error_width),
                             name=overlay,
                             mode='markers',
                             marker=dict(color=agg_colors, size=agg_marker_size, line=dict(width=1, color='black'), opacity=opacity),
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
                         ),
-                        row=1,
-                        col=i+1
+                        row=row,
+                        col=col
                     )
                 elif plot_mode.lower() == 'line':
                     fig.add_trace(
-                        go.Scattergl(
+                        go.Scatter(
                             x=xlabels,
                             y=agg_data[plot_var][xlabels].values,
                             error_y=dict(type='data', array=error_data[plot_var][xlabels].values, visible=True, width=error_width),
@@ -283,9 +310,55 @@ def agg_plot(
                             mode='lines+markers',
                             marker=dict(color=agg_colors, size=agg_marker_size),
                             line=dict(color=agg_colors[0], width=agg_line_width),
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
                         ),
-                        row=1,
-                        col=i+1
+                        row=row,
+                        col=col
+                    )
+                elif plot_mode.lower() == 'ribbon':
+                    fig.add_trace(
+                        go.Scatter(
+                            x=xlabels,
+                            y=agg_data[plot_var][xlabels].values,
+                            name=overlay,
+                            mode='lines',
+                            line=dict(color=agg_colors[0], width=agg_line_width),
+                            legendgroup=overlay,
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
+                        ),
+                        row=row,
+                        col=col
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            x=xlabels,
+                            y=agg_data[plot_var][xlabels].values + error_data[plot_var][xlabels].values,
+                            name=overlay,
+                            mode='lines',
+                            line=dict(color=agg_colors[0], width=0),
+                            legendgroup=overlay,
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
+                        ),
+                        row=row,
+                        col=col
+                    )
+                    fig.add_trace(
+                        go.Scatter(
+                            x=xlabels,
+                            y=agg_data[plot_var][xlabels].values - error_data[plot_var][xlabels].values,
+                            name=overlay,
+                            mode='lines',
+                            fill='tonexty',
+                            line=dict(color=agg_colors[0], width=0),
+                            legendgroup=overlay,
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
+                        ),
+                        row=row,
+                        col=col
                     )
                 else:
                     raise Exception("Invalid plot_mode. Must be one of 'bar', 'point', or 'line'.")
@@ -304,21 +377,23 @@ def agg_plot(
                                    np.repeat('slategrey', point_data.shape[0])
                     line_color = point_color[0]
                     fig.add_trace(
-                        go.Scattergl(
+                        go.Scatter(
                             x=point_data[vars_dict['group_var']].values,
                             y=point_data[plot_var].values,
                             mode=datapoint_plot_mode,
                             marker=dict(color=point_color, symbol='circle-open', opacity=0.8, size=10),
                             line=dict(width=1, color=line_color),
                             name=str(point),
+                            offsetgroup=overlay,
+                            alignmentgroup=group_var,
                         ),
-                        row=1,
-                        col=i+1
+                        row=row,
+                        col=col
                     )
 
     # configure plot
     if add_hline:
-        fig.add_hline(y=hline_y, row=1, col='all', line_width=1, opacity=1, line_color='black')
+        fig.add_hline(y=hline_y, row='all', col='all', line_width=1, opacity=1, line_color='black')
     fig.update_layout(
         dragmode="pan",
         font=dict(size=text_size, family=font_family),
@@ -330,10 +405,11 @@ def agg_plot(
         height=plot_height,
         template="simple_white",
         showlegend=False,
-        barmode=bar_mode
+        barmode=align_mode,
+        scattermode=align_mode if align_mode != 'stack' else 'overlay'
     )
     fig.update_xaxes(tickangle=tick_angle, title_text=x_title, dtick=x_dtick, matches='x')
-    fig.update_yaxes(range=y_range, dtick=y_dtick)
+    fig.update_yaxes(range=y_range, dtick=y_dtick, matches='y')
 
     # add shapes
     if shapes_to_add is not None:
@@ -341,8 +417,9 @@ def agg_plot(
             shapes_to_add = [shapes_to_add] # if dict, turn to list of one element
         if type(shapes_to_add) == list:
             for shape in shapes_to_add:
-                for col in np.arange(len(subplot_titles)):
-                    fig.add_shape(shape, row=1, col=col+1)
+                for row in np.arange(nrows):
+                    for col in np.arange(ncols):
+                        fig.add_shape(shape, row=row, col=col)
         else:
             raise Exception("Invalid argument type 'shapes_to_add'. Must be one of dict or list.")
 
@@ -365,7 +442,10 @@ def agg_plot(
             'scale':plot_scale
             }
             }
-    fig.show(config=config)
+    if show_fig:
+        fig.show(config=config)
+    if return_fig:
+        return fig
 
 
 # -----------------------------------------
@@ -398,6 +478,8 @@ def correlation_plot(
     opacity=0.8,
     plot_height=600,
     plot_width=600,
+    show_fig=True,
+    return_fig=False,
     save_path=None,
     plot_scale=5
     ):
@@ -459,6 +541,10 @@ def correlation_plot(
         how opaque each datapoint should be, from [0,1]. Default is 0.8.
     plot_height, plot_width : int
         the height and width, respectively, of the entier plot. Defaults are 600 and 600, respectively.
+    show_fig : bool
+        whether or not to display the figure. Default is True.
+    return_fig : bool
+        whether or not to return the fig object. Default is False.
     save_path : str
         file path location including filename where plot should be saved. If None, plot will not be saved. Default is None.
     plot_scale : int
@@ -559,7 +645,7 @@ def correlation_plot(
         min_val = min(corr_data.X.min(), corr_data.Y.min())
         max_val = max(corr_data.X.max(), corr_data.Y.max())
         fig.add_trace(
-            go.Scattergl(
+            go.Scatter(
                 x=np.linspace(min_val, max_val),
                 y=np.linspace(min_val, max_val),
                 mode="lines",
@@ -620,27 +706,38 @@ def correlation_plot(
             'scale':plot_scale
             }
             }
-    fig.show(config=config)
+    if show_fig:
+        fig.show(config=config)
+    if return_fig:
+        return fig
+
 
 # -----------------------------------------
 
-def plotRasterAndTimeHistogram(
+
+def raster_plot(
         raster,
         time,
+        trials=None,
         title=None,
         colorscale='gray_r',
         line_color='slategrey',
+        line_width=2,
+        add_vline=False,
+        vline_loc=0,
         x_title='Time (sec)',
         raster_y_title=None,
         line_y_title=None,
-        plot_height=600,
+        plot_height=700,
         plot_width=500,
         text_size=18,
         font_family='Arial',
         dtick=None,
+        tick_angle=0,
+        show_fig=True,
+        return_fig=False,
         save_path=None,
         plot_scale=5,
-        renderer='notebook'
         ):
     '''
     Assumes an input matrix (raster) where each row is a trial and each column is a timepoint, and a time vector. Plots a
@@ -652,12 +749,21 @@ def plotRasterAndTimeHistogram(
         numpy array representing trials in rows and time across columns, centered around 0.
     time : 1d numpy array or list
         time vector with the same length as the number of columns in raster.
+    trials : 1d numpy array or list
+        vector with the same length as the number of rows in raster. If not provided, will be set to
+        np.arange(raster.shape[0]). Default is None.
     title : str
         yitle of the plot. Default is None.
     colorscale : str
         colorscale to plot the heatmap. Default is 'gray_r'.
     line_color : str
         color to plot the line. Default is 'slategrey'.
+    line_width : int or float
+        width of the mean line. Default is 2.
+    add_vline : bool
+        whether or not to add a vertical demarcating line to the lower mean plot. Default is False.
+    vline_loc : int or float
+        x-location for where the vertical demarcating line is to be placed. Only used if add_vline is True. Default is 0.
     x_title : str
         label for the x-axis. Default is 'Time (sec)'.
     raster_y_title : str
@@ -672,33 +778,99 @@ def plotRasterAndTimeHistogram(
         font family used in the plot. Default is 'Arial'.
     dtick : int or float
         delta between each tick label on the x-axis. Default is None.
+    tick_angle : int
+        angle at which x-axis label text is displayed. Default is 0.
+    show_fig : bool
+        whether or not to display the figure. Default is True.
+    return_fig : bool
+        whether or not to return the fig object. Default is False.
     save_path : str
         file path location including filename where plot should be saved. If None, plot will not be saved. Default is None.
     plot_scale : int
         size scaling of the plot. Only used if save_path is not None and if save_path extension is of a static type. Default is 5.
-    renderer : str
-        plotly renderer to use for plotting. Default is 'notebook'.
     '''
 
+    # compute mean and sem of raster
     mean = raster.mean(axis=0)
     sem  = raster.std(axis=0) / np.sqrt(raster.shape[0])
 
     fig = make_subplots(rows=2, shared_xaxes=True, x_title=x_title, vertical_spacing=0.05)
-    fig.add_trace(go.Heatmap(x=time, z=raster, colorscale=colorscale, showscale=False, showlegend=False), row=1, col=1)
 
-    fig.add_trace(go.Scatter(x=time, y=(mean + sem),
-                             mode='lines', fill=None, line_color=line_color, hoverinfo='skip', showlegend=False, name=line_y_title, legendgroup='mean'), row=2, col=1)
-    fig.add_trace(go.Scatter(x=time, y=(mean - sem),
-                             mode='lines', fill='tonexty', line=dict(color=line_color), hoverinfo='skip', showlegend=False, legendgroup='mean'), row=2, col=1)
+    # plot raster
+    fig.add_trace(
+        go.Heatmap(
+            x=time,
+            y=trials if trials is not None else np.arange(raster.shape[0]),
+            z=raster,
+            colorscale=colorscale,
+            showscale=False,
+            showlegend=False
+        ),
+        row=1,
+        col=1
+    )
 
+    # plot mean with sem
+    fig.add_trace(
+        go.Scatter(
+            x=time,
+            y=mean,
+            mode='lines',
+            line=dict(color=line_color, width=line_width),
+        ),
+        row=2,
+        col=1
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=time,
+            y=(mean + sem),
+            mode='lines',
+            line=dict(color=line_color, width=0),
+        ),
+        row=2,
+        col=1
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=time,
+            y=(mean - sem),
+            mode='lines',
+            fill='tonexty',
+            line=dict(color=line_color, width=0),
+        ),
+        row=2,
+        col=1
+    )
+
+    if add_vline:
+        fig.add_vline(
+            x=vline_loc,
+            line_color='black',
+            line_width=2,
+            line_dash='dash',
+            opacity=1,
+            row=2,
+            col=1
+            )
+
+    # configure plot
     fig.update_yaxes(title_text=raster_y_title, row=1, col=1)
     fig.update_yaxes(title_text=line_y_title, row=2, col=1)
     if dtick is not None:
-        fig.update_xaxes(dtick=dtick)
-    # fig.update_yaxes(range=(0,np.ceil(mean)), row=2, col=1)
-    fig.update_layout(template='simple_white', height=plot_height, width=plot_width, title_text=title,
-                      font=dict(size=text_size, family=font_family))
+        fig.update_xaxes(tickangle=tick_angle, dtick=dtick)
+
+    fig.update_layout(
+        template='simple_white',
+        height=plot_height,
+        width=plot_width,
+        title_text=title,
+        font=dict(size=text_size, family=font_family),
+        showlegend=False,
+        )
     fig.update_annotations(font=dict(size=text_size+3))
+
+    # save plot
     if save_path is not None:
         if not os.path.exists(os.path.dirname(save_path)):
             os.makedirs(os.path.dirname(save_path))
@@ -718,4 +890,81 @@ def plotRasterAndTimeHistogram(
             'scale':plot_scale
             }
             }
-    fig.show(renderer=renderer, config=config)
+    if show_fig:
+        fig.show(config=config)
+    if return_fig:
+        return fig
+
+
+# -----------------------------------------
+
+
+def figs_to_gif(
+        figs,
+        save_path,
+        temp_save_path='./temp_gif_frames',
+        format='png',
+        scale=2,
+        height=800,
+        width=800,
+        duration=100,
+        loop=0
+        ):
+    '''
+    For a given list of frame images, create and save a gif looping through them.
+
+    Parameters
+    ==========
+    figs : list
+        list of plotly figures to stitch together.
+    save_path : str
+        directory including file name and extension to which to save final gif.
+    temp_save_path : str
+        directory where frames will temporarily be stored. Default is './temp_gif_frames'.
+    format : str
+        format to save frames in. One of ['png', 'jpg', 'jpeg', 'webp', 'svg', 'pdf']. Default is 'png'.
+    scale : int or float
+        scaling factor to up- or down-scale saved images. Default is 2.
+    height, width : int
+        height and width that each frame will be saved at, respectively. Defaults are 800.
+    duration : int
+        duration of each frame in ms. Default is 100.
+    loop : int
+        number of times to loop through the frames, infinite if 0. Default is 0.
+    '''
+
+    # make temporary save path for frames, create filenames
+    temp_save_path = os.path.abspath(temp_save_path)
+    if not os.path.exists(temp_save_path):
+        os.makedirs(temp_save_path)
+    filenames = [os.path.join(temp_save_path, f'frame{i}.{format}') \
+                 for i in range(len(figs))]
+    
+    # temporarily save frames (most time intensive step)
+    print('saving temporary frame files.')
+    plotly.io.write_images(
+        fig=figs,
+        file=filenames,
+        scale=scale,
+        height=height,
+        width=width
+        )
+    print('temporary frame files saved.')
+
+    # load saved frames
+    frames = [PIL.Image.open(file) for file in filenames]
+
+    # write gif
+    if frames:
+        frames[0].save(
+            save_path,
+            save_all=True,
+            append_images=frames[1:],
+            duration=duration, # ms per frame
+            loop=loop
+        )
+        print("GIF saved successfully.")
+    
+    # delete saved frames
+    shutil.rmtree(temp_save_path)
+    print('temporary frame files deleted.')
